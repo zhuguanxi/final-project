@@ -96,6 +96,26 @@ def get_all_records(source_id):
         )
         return c.fetchall()
 
+def get_all_user_records(source_id):
+    with sqlite3.connect("accounts.db") as conn:
+        c = conn.cursor()
+        c.execute(
+            "SELECT user_name, user_id, category, amount FROM records WHERE source_id=? ORDER BY user_id, id",
+            (source_id,)
+        )
+        rows = c.fetchall()
+
+    records_by_user = {}
+    for user_name, user_id, category, amount in rows:
+        if user_id not in records_by_user:
+            records_by_user[user_id] = {
+                "name": user_name,
+                "records": []
+            }
+        records_by_user[user_id]["records"].append((category, amount))
+    return records_by_user
+
+
 def calculate_settlement(source_id):
     all_records = get_all_records(source_id)
     if not all_records:
@@ -245,10 +265,19 @@ def handle_postback(event):
             line_bot_api.reply_message(event.reply_token, [reply, flex_main])
 
         elif action == "query_records":
-            records = get_recent_records(source_id, user_id)
-            text = "最近紀錄：\n" + "\n".join(f"{cat} - ${amt}" for cat, amt in records) if records else "沒有記錄"
+            user_records = get_all_user_records(source_id)
+            if not user_records:
+                reply = TextSendMessage(text="沒有記帳紀錄。")
+            else:
+                messages = ["📒 所有記帳紀錄：\n"]
+                for uid, data in user_records.items():
+                    messages.append(f"👤 {data['name']} ({uid})")
+                    for cat, amt in data["records"]:
+                        messages.append(f"{cat} - ${amt}")
+                    messages.append("")  # 空行分隔
+                reply = TextSendMessage(text="\n".join(messages[:60]))  # 避免超過文字上限
             flex_main = build_main_flex()
-            line_bot_api.reply_message(event.reply_token, [TextSendMessage(text=text), flex_main])
+            line_bot_api.reply_message(event.reply_token, [reply, flex_main])
 
         elif action == "settlement":
             settlement_text = calculate_settlement(source_id)
