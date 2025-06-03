@@ -217,16 +217,6 @@ def handle_message(event):
     user_id = event.source.user_id
     text = event.message.text.strip()
 
-    if text.startswith("刪除") and text[2:].strip().isdigit():
-        record_id = int(text[2:].strip())
-        success = delete_record_by_id(record_id)
-    if success:
-        reply = TextSendMessage(text=f"✅ 已成功刪除編號 {record_id} 的記錄")
-    else:
-        reply = TextSendMessage(text=f"⚠️ 找不到編號 {record_id} 的記錄")
-    flex_main = build_main_flex()
-    line_bot_api.reply_message(event.reply_token, [reply, flex_main])
-
     try:
         if source_id in user_pending_category:
             category = user_pending_category.pop(source_id)
@@ -248,7 +238,17 @@ def handle_message(event):
                 reply = TextSendMessage(text="請輸入正確數字金額")
                 line_bot_api.reply_message(event.reply_token, reply)
 
+            if text.startswith("刪除") and text[2:].strip().isdigit():
+                record_id = int(text[2:].strip())
+                success = delete_record_by_id(record_id)
+            if success:
+                reply = TextSendMessage(text=f"✅ 已成功刪除編號 {record_id} 的記錄")
+            else:
+                reply = TextSendMessage(text=f"⚠️ 找不到編號 {record_id} 的記錄")
+            flex_main = build_main_flex()
+            line_bot_api.reply_message(event.reply_token, [reply, flex_main])
             return
+        
         flex_main = build_main_flex()
         line_bot_api.reply_message(event.reply_token, flex_main)
     except Exception as e:
