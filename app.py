@@ -178,7 +178,7 @@ def build_main_flex():
                     margin="md",
                     contents=[
                         ButtonComponent(style="primary", margin="md", action=PostbackAction(label="記帳", data="action=start_record")),
-                        ButtonComponent(style="primary", margin="md", action=PostbackAction(label="刪除最新記錄", data="action=delete_last")),
+                        ButtonComponent(style="primary", margin="md", action=PostbackAction(label="刪除記錄", data="action=delete_last")),
                         ButtonComponent(style="primary", margin="md", action=PostbackAction(label="清除所有記錄", data="action=clear_all")),
                         ButtonComponent(style="primary", margin="md", action=PostbackAction(label="查詢紀錄", data="action=query_records")),
                         ButtonComponent(style="primary", margin="md", action=PostbackAction(label="一鍵分帳", data="action=settlement")),
@@ -325,3 +325,4 @@ if __name__ == "__main__":
     init_db()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+    print(user_records)
