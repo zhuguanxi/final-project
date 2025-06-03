@@ -25,36 +25,45 @@ handler = WebhookHandler(CHANNEL_SECRET)
 
 user_pending_category = {}
 
+def get_source_id(event):
+    if event.source.type == "user":
+        return event.source.user_id
+    elif event.source.type == "group":
+        return event.source.group_id
+    elif event.source.type == "room":
+        return event.source.room_id
+    return None
+
 def init_db():
     with sqlite3.connect("accounts.db") as conn:
         c = conn.cursor()
         c.execute("""
             CREATE TABLE IF NOT EXISTS records (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_id TEXT,
                 user_id TEXT,
-                user_name TEXT,             -- 新增欄位存使用者名稱
+                user_name TEXT,
                 category TEXT,
                 amount INTEGER
             )
         """)
         conn.commit()
 
-# 新增 user_name 參數
-def add_record(user_id, user_name, category, amount):
+def add_record(source_id, user_id, user_name, category, amount):
     with sqlite3.connect("accounts.db") as conn:
         c = conn.cursor()
         c.execute(
-            "INSERT INTO records (user_id, user_name, category, amount) VALUES (?, ?, ?, ?)",
-            (user_id, user_name, category, amount),
+            "INSERT INTO records (source_id, user_id, user_name, category, amount) VALUES (?, ?, ?, ?, ?)",
+            (source_id, user_id, user_name, category, amount),
         )
         conn.commit()
 
-def delete_last_record(user_id):
+def delete_last_record(source_id, user_id):
     with sqlite3.connect("accounts.db") as conn:
         c = conn.cursor()
         c.execute(
-            "SELECT id FROM records WHERE user_id=? ORDER BY id DESC LIMIT 1",
-            (user_id,)
+            "SELECT id FROM records WHERE source_id=? AND user_id=? ORDER BY id DESC LIMIT 1",
+            (source_id, user_id)
         )
         row = c.fetchone()
         if row:
@@ -63,30 +72,32 @@ def delete_last_record(user_id):
             return True
         return False
 
-def clear_all_records(user_id):
+def clear_all_records(source_id):
     with sqlite3.connect("accounts.db") as conn:
         c = conn.cursor()
-        c.execute("DELETE FROM records WHERE user_id=?", (user_id,))
+        c.execute("DELETE FROM records WHERE source_id=?", (source_id,))
         conn.commit()
 
-def get_recent_records(user_id, limit=10):
+def get_recent_records(source_id, user_id, limit=10):
     with sqlite3.connect("accounts.db") as conn:
         c = conn.cursor()
         c.execute(
-            "SELECT category, amount FROM records WHERE user_id=? ORDER BY id DESC LIMIT ?",
-            (user_id, limit)
+            "SELECT category, amount FROM records WHERE source_id=? AND user_id=? ORDER BY id DESC LIMIT ?",
+            (source_id, user_id, limit)
         )
         return c.fetchall()
 
-# 修改成用 user_name 聚合
-def get_all_records():
+def get_all_records(source_id):
     with sqlite3.connect("accounts.db") as conn:
         c = conn.cursor()
-        c.execute("SELECT user_name, SUM(amount) FROM records GROUP BY user_name")
+        c.execute(
+            "SELECT user_name, SUM(amount) FROM records WHERE source_id=? GROUP BY user_id",
+            (source_id,)
+        )
         return c.fetchall()
 
-def calculate_settlement():
-    all_records = get_all_records()
+def calculate_settlement(source_id):
+    all_records = get_all_records(source_id)
     if not all_records:
         return "沒有記帳資料，無法計算分帳"
 
@@ -96,8 +107,8 @@ def calculate_settlement():
 
     balances = [(user_name, amt - avg) for user_name, amt in all_records]
 
-    payers = [(uname, -bal) for uname, bal in balances if bal < -0.01]  # 欠錢的人，容差0.01避免浮點誤差
-    receivers = [(uname, bal) for uname, bal in balances if bal > 0.01]  # 多付的人
+    payers = [(uname, -bal) for uname, bal in balances if bal < -0.01]
+    receivers = [(uname, bal) for uname, bal in balances if bal > 0.01]
 
     transfers = []
     i, j = 0, 0
@@ -136,31 +147,11 @@ def build_main_flex():
                     layout="vertical",
                     margin="md",
                     contents=[
-                        ButtonComponent(
-                            style="primary",
-                            margin="md",
-                            action=PostbackAction(label="記帳", data="action=start_record")
-                        ),
-                        ButtonComponent(
-                            style="primary",
-                            margin="md",
-                            action=PostbackAction(label="刪除最新記錄", data="action=delete_last")
-                        ),
-                        ButtonComponent(
-                            style="primary",
-                            margin="md",
-                            action=PostbackAction(label="清除所有記錄", data="action=clear_all")
-                        ),
-                        ButtonComponent(
-                            style="primary",
-                            margin="md",
-                            action=PostbackAction(label="查詢紀錄", data="action=query_records")
-                        ),
-                        ButtonComponent(
-                            style="primary",
-                            margin="md",
-                            action=PostbackAction(label="一鍵分帳", data="action=settlement")
-                        ),
+                        ButtonComponent(style="primary", margin="md", action=PostbackAction(label="記帳", data="action=start_record")),
+                        ButtonComponent(style="primary", margin="md", action=PostbackAction(label="刪除最新記錄", data="action=delete_last")),
+                        ButtonComponent(style="primary", margin="md", action=PostbackAction(label="清除所有記錄", data="action=clear_all")),
+                        ButtonComponent(style="primary", margin="md", action=PostbackAction(label="查詢紀錄", data="action=query_records")),
+                        ButtonComponent(style="primary", margin="md", action=PostbackAction(label="一鍵分帳", data="action=settlement")),
                     ],
                 ),
             ]
@@ -178,26 +169,10 @@ def build_category_flex():
                     layout="vertical",
                     margin="md",
                     contents=[
-                        ButtonComponent(
-                            style="primary",
-                            margin="md",
-                            action=PostbackAction(label="午餐", data="action=select_category&category=午餐")
-                        ),
-                        ButtonComponent(
-                            style="primary",
-                            margin="md",
-                            action=PostbackAction(label="交通", data="action=select_category&category=交通")
-                        ),
-                        ButtonComponent(
-                            style="primary",
-                            margin="md",
-                            action=PostbackAction(label="娛樂", data="action=select_category&category=娛樂")
-                        ),
-                        ButtonComponent(
-                            style="primary",
-                            margin="md",
-                            action=PostbackAction(label="其他", data="action=select_category&category=其他")
-                        ),
+                        ButtonComponent(style="primary", margin="md", action=PostbackAction(label="午餐", data="action=select_category&category=午餐")),
+                        ButtonComponent(style="primary", margin="md", action=PostbackAction(label="交通", data="action=select_category&category=交通")),
+                        ButtonComponent(style="primary", margin="md", action=PostbackAction(label="娛樂", data="action=select_category&category=娛樂")),
+                        ButtonComponent(style="primary", margin="md", action=PostbackAction(label="其他", data="action=select_category&category=其他")),
                     ],
                 ),
             ]
@@ -207,27 +182,27 @@ def build_category_flex():
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
+    source_id = get_source_id(event)
     user_id = event.source.user_id
     text = event.message.text.strip()
     try:
-        if user_id in user_pending_category:
-            category = user_pending_category.pop(user_id)
+        if source_id in user_pending_category:
+            category = user_pending_category.pop(source_id)
             if text.isdigit():
                 amount = int(text)
                 if amount <= 0:
-                    user_pending_category[user_id] = category
+                    user_pending_category[source_id] = category
                     reply = TextSendMessage(text="金額需大於0，請重新輸入正確數字金額")
                     line_bot_api.reply_message(event.reply_token, reply)
                     return
-                # 取得使用者名稱
                 profile = line_bot_api.get_profile(user_id)
                 user_name = profile.display_name
-                add_record(user_id, user_name, category, amount)
+                add_record(source_id, user_id, user_name, category, amount)
                 reply = TextSendMessage(text=f"記帳成功：{category} ${amount} ({user_name})")
                 flex_main = build_main_flex()
                 line_bot_api.reply_message(event.reply_token, [reply, flex_main])
             else:
-                user_pending_category[user_id] = category
+                user_pending_category[source_id] = category
                 reply = TextSendMessage(text="請輸入正確數字金額")
                 line_bot_api.reply_message(event.reply_token, reply)
             return
@@ -238,14 +213,10 @@ def handle_message(event):
 
 @handler.add(PostbackEvent)
 def handle_postback(event):
+    source_id = get_source_id(event)
     user_id = event.source.user_id
-    data = event.postback.data
     try:
-        params = {}
-        for item in data.split('&'):
-            if '=' in item:
-                k, v = item.split('=', 1)
-                params[k] = v
+        params = dict(item.split('=') for item in event.postback.data.split('&') if '=' in item)
         action = params.get("action")
 
         if action == "start_record":
@@ -255,45 +226,37 @@ def handle_postback(event):
         elif action == "select_category":
             category = params.get("category")
             if category:
-                user_pending_category[user_id] = category
+                user_pending_category[source_id] = category
                 reply = TextSendMessage(text=f"你選擇了「{category}」，請輸入金額（數字）")
-                line_bot_api.reply_message(event.reply_token, reply)
             else:
-                line_bot_api.reply_message(event.reply_token, TextSendMessage(text="分類錯誤，請重新操作"))
+                reply = TextSendMessage(text="分類錯誤，請重新操作")
+            line_bot_api.reply_message(event.reply_token, reply)
 
         elif action == "delete_last":
-            success = delete_last_record(user_id)
-            if success:
-                reply = TextSendMessage(text="刪除最新記錄成功。")
-            else:
-                reply = TextSendMessage(text="沒有可刪除的記錄。")
+            success = delete_last_record(source_id, user_id)
+            reply = TextSendMessage(text="刪除最新記錄成功。" if success else "沒有可刪除的記錄。")
             flex_main = build_main_flex()
             line_bot_api.reply_message(event.reply_token, [reply, flex_main])
 
         elif action == "clear_all":
-            clear_all_records(user_id)
+            clear_all_records(source_id)
             reply = TextSendMessage(text="已清除所有記錄。")
             flex_main = build_main_flex()
             line_bot_api.reply_message(event.reply_token, [reply, flex_main])
 
         elif action == "query_records":
-            records = get_recent_records(user_id)
-            if records:
-                lines = [f"{cat} - ${amt}" for cat, amt in records]
-                text = "最近紀錄：\n" + "\n".join(lines)
-            else:
-                text = "沒有記錄"
+            records = get_recent_records(source_id, user_id)
+            text = "最近紀錄：\n" + "\n".join(f"{cat} - ${amt}" for cat, amt in records) if records else "沒有記錄"
             flex_main = build_main_flex()
             line_bot_api.reply_message(event.reply_token, [TextSendMessage(text=text), flex_main])
 
         elif action == "settlement":
-            settlement_text = calculate_settlement()
+            settlement_text = calculate_settlement(source_id)
             flex_main = build_main_flex()
             line_bot_api.reply_message(event.reply_token, [TextSendMessage(text=settlement_text), flex_main])
 
         else:
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text="不明指令"))
-
     except Exception as e:
         print(f"handle_postback error: {e}")
 
