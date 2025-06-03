@@ -32,18 +32,20 @@ def init_db():
             CREATE TABLE IF NOT EXISTS records (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id TEXT,
+                user_name TEXT,             -- 新增欄位存使用者名稱
                 category TEXT,
                 amount INTEGER
             )
         """)
         conn.commit()
 
-def add_record(user_id, category, amount):
+# 新增 user_name 參數
+def add_record(user_id, user_name, category, amount):
     with sqlite3.connect("accounts.db") as conn:
         c = conn.cursor()
         c.execute(
-            "INSERT INTO records (user_id, category, amount) VALUES (?, ?, ?)",
-            (user_id, category, amount),
+            "INSERT INTO records (user_id, user_name, category, amount) VALUES (?, ?, ?, ?)",
+            (user_id, user_name, category, amount),
         )
         conn.commit()
 
@@ -76,10 +78,11 @@ def get_recent_records(user_id, limit=10):
         )
         return c.fetchall()
 
+# 修改成用 user_name 聚合
 def get_all_records():
     with sqlite3.connect("accounts.db") as conn:
         c = conn.cursor()
-        c.execute("SELECT user_id, SUM(amount) FROM records GROUP BY user_id")
+        c.execute("SELECT user_name, SUM(amount) FROM records GROUP BY user_name")
         return c.fetchall()
 
 def calculate_settlement():
@@ -91,19 +94,19 @@ def calculate_settlement():
     n = len(all_records)
     avg = total / n
 
-    balances = [(user_id, amt - avg) for user_id, amt in all_records]
+    balances = [(user_name, amt - avg) for user_name, amt in all_records]
 
-    payers = [(uid, -bal) for uid, bal in balances if bal < -0.01]  # 欠錢的人，容差0.01避免浮點誤差
-    receivers = [(uid, bal) for uid, bal in balances if bal > 0.01]  # 多付的人
+    payers = [(uname, -bal) for uname, bal in balances if bal < -0.01]  # 欠錢的人，容差0.01避免浮點誤差
+    receivers = [(uname, bal) for uname, bal in balances if bal > 0.01]  # 多付的人
 
     transfers = []
     i, j = 0, 0
     while i < len(payers) and j < len(receivers):
-        payer_id, pay_amount = payers[i]
-        receiver_id, recv_amount = receivers[j]
+        payer_name, pay_amount = payers[i]
+        receiver_name, recv_amount = receivers[j]
 
         transfer_amount = min(pay_amount, recv_amount)
-        transfers.append(f"用戶 {payer_id} → 用戶 {receiver_id}：${transfer_amount:.0f}")
+        transfers.append(f"{payer_name} → {receiver_name}：${transfer_amount:.0f}")
 
         pay_amount -= transfer_amount
         recv_amount -= transfer_amount
@@ -111,12 +114,12 @@ def calculate_settlement():
         if abs(pay_amount) < 0.01:
             i += 1
         else:
-            payers[i] = (payer_id, pay_amount)
+            payers[i] = (payer_name, pay_amount)
 
         if abs(recv_amount) < 0.01:
             j += 1
         else:
-            receivers[j] = (receiver_id, recv_amount)
+            receivers[j] = (receiver_name, recv_amount)
 
     if not transfers:
         return "所有人已經均分，無需轉帳"
@@ -135,22 +138,27 @@ def build_main_flex():
                     contents=[
                         ButtonComponent(
                             style="primary",
+                            margin="md",
                             action=PostbackAction(label="記帳", data="action=start_record")
                         ),
                         ButtonComponent(
-                            style="secondary",
+                            style="primary",
+                            margin="md",
                             action=PostbackAction(label="刪除最新記錄", data="action=delete_last")
                         ),
                         ButtonComponent(
-                            style="secondary",
+                            style="primary",
+                            margin="md",
                             action=PostbackAction(label="清除所有記錄", data="action=clear_all")
                         ),
                         ButtonComponent(
                             style="primary",
+                            margin="md",
                             action=PostbackAction(label="查詢紀錄", data="action=query_records")
                         ),
                         ButtonComponent(
                             style="primary",
+                            margin="md",
                             action=PostbackAction(label="一鍵分帳", data="action=settlement")
                         ),
                     ],
@@ -172,18 +180,22 @@ def build_category_flex():
                     contents=[
                         ButtonComponent(
                             style="primary",
+                            margin="md",
                             action=PostbackAction(label="午餐", data="action=select_category&category=午餐")
                         ),
                         ButtonComponent(
                             style="primary",
+                            margin="md",
                             action=PostbackAction(label="交通", data="action=select_category&category=交通")
                         ),
                         ButtonComponent(
                             style="primary",
+                            margin="md",
                             action=PostbackAction(label="娛樂", data="action=select_category&category=娛樂")
                         ),
                         ButtonComponent(
                             style="primary",
+                            margin="md",
                             action=PostbackAction(label="其他", data="action=select_category&category=其他")
                         ),
                     ],
@@ -207,8 +219,11 @@ def handle_message(event):
                     reply = TextSendMessage(text="金額需大於0，請重新輸入正確數字金額")
                     line_bot_api.reply_message(event.reply_token, reply)
                     return
-                add_record(user_id, category, amount)
-                reply = TextSendMessage(text=f"記帳成功：{category} ${amount}")
+                # 取得使用者名稱
+                profile = line_bot_api.get_profile(user_id)
+                user_name = profile.display_name
+                add_record(user_id, user_name, category, amount)
+                reply = TextSendMessage(text=f"記帳成功：{category} ${amount} ({user_name})")
                 flex_main = build_main_flex()
                 line_bot_api.reply_message(event.reply_token, [reply, flex_main])
             else:
