@@ -100,20 +100,21 @@ def get_all_user_records(source_id):
     with sqlite3.connect("accounts.db") as conn:
         c = conn.cursor()
         c.execute(
-            "SELECT user_name, user_id, category, amount FROM records WHERE source_id=? ORDER BY user_id, id",
+            "SELECT id, user_name, user_id, category, amount FROM records WHERE source_id=? ORDER BY user_id, id",
             (source_id,)
         )
         rows = c.fetchall()
 
     records_by_user = {}
-    for user_name, user_id, category, amount in rows:
+    for rec_id, user_name, user_id, category, amount in rows:
         if user_id not in records_by_user:
             records_by_user[user_id] = {
                 "name": user_name,
                 "records": []
             }
-        records_by_user[user_id]["records"].append((category, amount))
+        records_by_user[user_id]["records"].append((rec_id, category, amount))
     return records_by_user
+
 
 def delete_record_by_id(record_id):
     with sqlite3.connect("accounts.db") as conn:
