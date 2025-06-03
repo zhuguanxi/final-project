@@ -294,8 +294,8 @@ def handle_postback(event):
                 messages = ["📒 所有記帳紀錄：\n"]
                 for uid, data in user_records.items():
                     messages.append(f"👤 {data['name']}")
-                    for cat, amt in data["records"]:
-                        messages.append(f"{cat} - ${amt}")
+                    for rec_id, cat, amt in data["records"]:
+                        messages.append(f"[編號: {rec_id}] {cat} - ${amt}")
                     messages.append("")  # 空行分隔
                 reply = TextSendMessage(text="\n".join(messages[:60]))  # 避免超過文字上限
             flex_main = build_main_flex()
