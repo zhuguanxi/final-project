@@ -271,7 +271,7 @@ def handle_postback(event):
             else:
                 messages = ["📒 所有記帳紀錄：\n"]
                 for uid, data in user_records.items():
-                    messages.append(f"👤 {data['name']} ({uid})")
+                    messages.append(f"👤 {data['name']}")
                     for cat, amt in data["records"]:
                         messages.append(f"{cat} - ${amt}")
                     messages.append("")  # 空行分隔
