@@ -288,6 +288,7 @@ def handle_postback(event):
 
         elif action == "query_records":
             user_records = get_all_user_records(source_id)
+            print(user_records)
             if not user_records:
                 reply = TextSendMessage(text="沒有記帳紀錄。")
             else:
@@ -325,4 +326,4 @@ if __name__ == "__main__":
     init_db()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-    print(user_records)
+    
