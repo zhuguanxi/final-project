@@ -216,6 +216,17 @@ def handle_message(event):
     source_id = get_source_id(event)
     user_id = event.source.user_id
     text = event.message.text.strip()
+
+    if text.startswith("刪除") and text[2:].strip().isdigit():
+        record_id = int(text[2:].strip())
+        success = delete_record_by_id(record_id)
+    if success:
+        reply = TextSendMessage(text=f"✅ 已成功刪除編號 {record_id} 的記錄")
+    else:
+        reply = TextSendMessage(text=f"⚠️ 找不到編號 {record_id} 的記錄")
+    flex_main = build_main_flex()
+    line_bot_api.reply_message(event.reply_token, [reply, flex_main])
+
     try:
         if source_id in user_pending_category:
             category = user_pending_category.pop(source_id)
@@ -236,17 +247,6 @@ def handle_message(event):
                 user_pending_category[source_id] = category
                 reply = TextSendMessage(text="請輸入正確數字金額")
                 line_bot_api.reply_message(event.reply_token, reply)
-            # 使用者輸入「刪除 5」的情況
-            if text.startswith("刪除") and text[2:].strip().isdigit():
-                record_id = int(text[2:].strip())
-                success = delete_record_by_id(record_id)
-                if success:
-                    reply = TextSendMessage(text=f"✅ 已成功刪除編號 {record_id} 的記錄")
-                else:
-                    reply = TextSendMessage(text=f"⚠️ 找不到編號 {record_id} 的記錄")
-                flex_main = build_main_flex()
-                line_bot_api.reply_message(event.reply_token, [reply, flex_main])
-                return
 
             return
         flex_main = build_main_flex()
@@ -276,10 +276,15 @@ def handle_postback(event):
             line_bot_api.reply_message(event.reply_token, reply)
 
         elif action == "delete_last":
-            success = delete_last_record(source_id, user_id)
-            reply = TextSendMessage(text="刪除最新記錄成功。" if success else "沒有可刪除的記錄。")
+            reply = TextSendMessage(text=(
+                "🗑️ 刪除記錄說明：\n"
+                "若要刪除最新記錄，可直接點此選項\n"
+                "若要刪除特定記錄，請輸入「刪除 記錄編號」\n\n"
+                "例如：輸入「刪除 5」即可刪除編號為 5 的記錄"
+            ))
             flex_main = build_main_flex()
             line_bot_api.reply_message(event.reply_token, [reply, flex_main])
+
 
         elif action == "clear_all":
             clear_all_records(source_id)
