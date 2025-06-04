@@ -167,7 +167,8 @@ def calculate_settlement(source_id):
         return "所有人已經均分，無需轉帳"
 
     return "\n".join(transfers)
-def build_tutorial_message():
+
+'''def build_tutorial_message():
     return TextSendMessage(
         text=(
             "👋 歡迎使用記帳機器人！\n\n"
@@ -179,7 +180,8 @@ def build_tutorial_message():
             "5️⃣ 一鍵分帳：自動計算每人應收應付\n\n"
             "📥 請輸入「選單」來開始操作吧！"
         )
-    )
+    )'''
+
 def build_main_flex():
     bubble = BubbleContainer(
         body=BoxComponent(
