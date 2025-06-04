@@ -290,7 +290,7 @@ def handle_postback(event):
         if action == "start_record":
             #flex_category = build_category_flex()
             #line_bot_api.reply_message(event.reply_token, flex_category)
-            reply = TextSendMessage(text="請輸入記帳內容（格式：分類 金額），例如：麥當勞 120")
+            reply = TextSendMessage(text="請輸入記帳內容（格式：分類 金額），例如：午餐 100")
             line_bot_api.reply_message(event.reply_token, reply)
 
         elif action == "select_category":
@@ -319,6 +319,7 @@ def handle_postback(event):
             line_bot_api.reply_message(event.reply_token, [reply, flex_main])
 
         elif action == "query_records":
+            flex_main = build_main_flex()
             user_records = get_all_user_records(source_id)
             print(user_records)
             if not user_records:
