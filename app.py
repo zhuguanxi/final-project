@@ -222,14 +222,14 @@ def handle_message(event):
             record_id = int(text[2:].strip())
             success = delete_record_by_id(record_id)
             if success:
-                reply = TextSendMessage(text=f"✅ 已成功刪除編號 {record_id} 的記錄")
+                reply = TextSendMessage(text=f"已成功刪除編號 {record_id} 的記錄")
             else:
-                reply = TextSendMessage(text=f"⚠️ 找不到編號 {record_id} 的記錄")
+                reply = TextSendMessage(text=f"找不到編號 {record_id} 的記錄")
             flex_main = build_main_flex()
             line_bot_api.reply_message(event.reply_token, [reply, flex_main])
             return  
 
-        if source_id in user_pending_category:
+        '''if source_id in user_pending_category:
             category = user_pending_category.pop(source_id)
             if text.isdigit():
                 amount = int(text)
@@ -249,7 +249,24 @@ def handle_message(event):
                 reply = TextSendMessage(text="請輸入正確數字金額")
                 line_bot_api.reply_message(event.reply_token, reply)
             return  
+        '''
+        parts = text.split()
+        if len(parts) != 2 or not parts[1].isdigit():
+            reply = TextSendMessage(text="⚠️ 格式錯誤，請輸入「分類 金額」，例如：麥當勞 120")
+            line_bot_api.reply_message(event.reply_token, reply)
+            return
 
+        category, amount_text = parts
+        amount = int(amount_text)
+        if amount <= 0:
+            reply = TextSendMessage(text="⚠️ 金額需為正整數")
+            line_bot_api.reply_message(event.reply_token, reply)
+            return
+
+        profile = line_bot_api.get_profile(user_id)
+        user_name = profile.display_name
+        add_record(source_id, user_id, user_name, category, amount)
+        reply = TextSendMessage(text=f"✅ 記帳成功：{category} ${amount}（{user_name}）")
         flex_main = build_main_flex()
         line_bot_api.reply_message(event.reply_token, flex_main)
 
@@ -266,8 +283,10 @@ def handle_postback(event):
         action = params.get("action")
 
         if action == "start_record":
-            flex_category = build_category_flex()
-            line_bot_api.reply_message(event.reply_token, flex_category)
+            #flex_category = build_category_flex()
+            #line_bot_api.reply_message(event.reply_token, flex_category)
+            reply = TextSendMessage(text="請輸入記帳內容（格式：分類 金額），例如：麥當勞 120")
+            line_bot_api.reply_message(event.reply_token, reply)
 
         elif action == "select_category":
             category = params.get("category")
