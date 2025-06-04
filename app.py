@@ -190,7 +190,7 @@ def build_main_flex():
                     layout="vertical",
                     margin="md",
                     contents=[
-                        #ButtonComponent(style="primary", margin="md", action=PostbackAction(label="記帳", data="action=start_record")),
+                        ButtonComponent(style="primary", margin="md", action=PostbackAction(label="使用說明", data="action=start_record")),
                         ButtonComponent(style="primary", margin="md", action=PostbackAction(label="刪除記錄", data="action=delete_last")),
                         ButtonComponent(style="primary", margin="md", action=PostbackAction(label="清除所有記錄", data="action=clear_all")),
                         ButtonComponent(style="primary", margin="md", action=PostbackAction(label="查詢紀錄", data="action=query_records")),
@@ -303,7 +303,16 @@ def handle_postback(event):
         if action == "start_record":
             #flex_category = build_category_flex()
             #line_bot_api.reply_message(event.reply_token, flex_category)
-            reply = TextSendMessage(text="請輸入記帳內容（格式：分類 金額），例如：午餐 100")
+            reply = TextSendMessage(text=(
+            "👋 歡迎使用記帳機器人！\n\n"
+            "📌 主要功能：\n"
+            "1️⃣ 記帳：輸入「分類 金額」即可快速記帳，例如：午餐 100\n"
+            "2️⃣ 查詢紀錄：顯示目前所有人的記帳資料\n"
+            "3️⃣ 刪除記錄：輸入「刪除 記錄編號」可刪除特定筆記錄\n"
+            "4️⃣ 清除所有記錄：刪除目前群組內所有記錄\n"
+            "5️⃣ 一鍵分帳：自動計算每人應收應付\n\n"
+            "📥 請輸入「選單」來開始操作吧！"
+        ))
             line_bot_api.reply_message(event.reply_token, reply)
 
         elif action == "select_category":
