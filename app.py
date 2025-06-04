@@ -252,21 +252,21 @@ def handle_message(event):
         '''
         parts = text.split()
         if len(parts) != 2 or not parts[1].isdigit():
-            reply = TextSendMessage(text="⚠️ 格式錯誤，請輸入「分類 金額」，例如：麥當勞 120")
+            reply = TextSendMessage(text="格式錯誤，請輸入「分類 金額」，例如：午餐 100")
             line_bot_api.reply_message(event.reply_token, reply)
             return
 
         category, amount_text = parts
         amount = int(amount_text)
         if amount <= 0:
-            reply = TextSendMessage(text="⚠️ 金額需為正整數")
+            reply = TextSendMessage(text="金額需為正整數")
             line_bot_api.reply_message(event.reply_token, reply)
             return
 
         profile = line_bot_api.get_profile(user_id)
         user_name = profile.display_name
         add_record(source_id, user_id, user_name, category, amount)
-        reply = TextSendMessage(text=f"✅ 記帳成功：{category} ${amount}（{user_name}）")
+        reply = TextSendMessage(text=f"記帳成功：{category} ${amount}（{user_name}）")
         flex_main = build_main_flex()
         line_bot_api.reply_message(event.reply_token, flex_main)
 
@@ -278,6 +278,9 @@ def handle_message(event):
 def handle_postback(event):
     source_id = get_source_id(event)
     user_id = event.source.user_id
+
+    flex_main = build_main_flex()
+    
     try:
         params = dict(item.split('=') for item in event.postback.data.split('&') if '=' in item)
         action = params.get("action")
@@ -326,7 +329,7 @@ def handle_postback(event):
                         messages.append(f"[編號: {rec_id}] {cat} - ${amt}")
                     messages.append("")  # 空行分隔
                 reply = TextSendMessage(text="\n".join(messages[:60]))  # 避免超過文字上限
-            flex_main = build_main_flex()
+            
             line_bot_api.reply_message(event.reply_token, [reply, flex_main])
 
         elif action == "settlement":
