@@ -211,9 +211,9 @@ def handle_message(event):
     text = event.message.text.strip()
 
     if text == "選單":
-        tutorial_msg = build_tutorial_message()
+        #tutorial_msg = build_tutorial_message()
         flex_main = build_main_flex()
-        line_bot_api.reply_message(event.reply_token, [tutorial_msg, flex_main])
+        line_bot_api.reply_message(event.reply_token, [flex_main])
 
     try:
         if text.startswith("刪除") and text[2:].strip().isdigit():
