@@ -2,7 +2,7 @@ from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import (
-    MessageEvent, TextMessage, TextSendMessage,
+    JoinEvent,MessageEvent, TextMessage, TextSendMessage,
     PostbackEvent, PostbackAction, FlexSendMessage,
     BubbleContainer, BoxComponent, TextComponent, ButtonComponent
 )
@@ -202,27 +202,6 @@ def build_main_flex():
     )
     return FlexSendMessage(alt_text="主選單", contents=bubble)
 
-def build_category_flex():
-    bubble = BubbleContainer(
-        body=BoxComponent(
-            layout="vertical",
-            contents=[
-                TextComponent(text="請選擇記帳分類", weight="bold", size="lg", margin="md"),
-                BoxComponent(
-                    layout="vertical",
-                    margin="md",
-                    contents=[
-                        ButtonComponent(style="primary", margin="md", action=PostbackAction(label="午餐", data="action=select_category&category=午餐")),
-                        ButtonComponent(style="primary", margin="md", action=PostbackAction(label="交通", data="action=select_category&category=交通")),
-                        ButtonComponent(style="primary", margin="md", action=PostbackAction(label="娛樂", data="action=select_category&category=娛樂")),
-                        ButtonComponent(style="primary", margin="md", action=PostbackAction(label="其他", data="action=select_category&category=其他")),
-                    ],
-                ),
-            ]
-        )
-    )
-    return FlexSendMessage(alt_text="請選擇記帳分類", contents=bubble)
-
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     source_id = get_source_id(event)
@@ -246,27 +225,6 @@ def handle_message(event):
             line_bot_api.reply_message(event.reply_token, [reply, flex_main])
             return  
 
-        '''if source_id in user_pending_category:
-            category = user_pending_category.pop(source_id)
-            if text.isdigit():
-                amount = int(text)
-                if amount <= 0:
-                    user_pending_category[source_id] = category
-                    reply = TextSendMessage(text="金額需大於0，請重新輸入正確數字金額")
-                    line_bot_api.reply_message(event.reply_token, reply)
-                    return
-                profile = line_bot_api.get_profile(user_id)
-                user_name = profile.display_name
-                add_record(source_id, user_id, user_name, category, amount)
-                reply = TextSendMessage(text=f"記帳成功：{category} ${amount} ({user_name})")
-                flex_main = build_main_flex()
-                line_bot_api.reply_message(event.reply_token, [reply, flex_main])
-            else:
-                user_pending_category[source_id] = category
-                reply = TextSendMessage(text="請輸入正確數字金額")
-                line_bot_api.reply_message(event.reply_token, reply)
-            return  
-        '''
         parts = text.split()
         if len(parts) != 2 or not parts[1].isdigit():
             reply = TextSendMessage(text="格式錯誤，請輸入「分類 金額」，例如：午餐 100")
@@ -301,8 +259,6 @@ def handle_postback(event):
         action = params.get("action")
 
         if action == "start_record":
-            #flex_category = build_category_flex()
-            #line_bot_api.reply_message(event.reply_token, flex_category)
             reply = TextSendMessage(text=(
             "👋 歡迎使用記帳機器人！\n\n"
             "📌 主要功能：\n"
@@ -311,8 +267,7 @@ def handle_postback(event):
             "3️⃣ 刪除記錄：輸入「刪除 記錄編號」可刪除特定筆記錄\n"
             "4️⃣ 清除所有記錄：刪除目前群組內所有記錄\n"
             "5️⃣ 一鍵分帳：自動計算每人應收應付\n\n"
-            "📥 請輸入「選單」來開始操作吧！"
-        ))
+            "📥 請輸入「選單」來開始操作吧！"))
             line_bot_api.reply_message(event.reply_token, reply)
 
         elif action == "select_category":
@@ -376,6 +331,21 @@ def callback():
     except InvalidSignatureError:
         abort(400)
     return "OK"
+@handler.add(JoinEvent)
+def handle_join(event):
+    text=(
+            "👋 歡迎使用記帳機器人！\n\n"
+            "📌 主要功能：\n"
+            "1️⃣ 記帳：輸入「分類 金額」即可快速記帳，例如：午餐 100\n"
+            "2️⃣ 查詢紀錄：顯示目前所有人的記帳資料\n"
+            "3️⃣ 刪除記錄：輸入「刪除 記錄編號」可刪除特定筆記錄\n"
+            "4️⃣ 清除所有記錄：刪除目前群組內所有記錄\n"
+            "5️⃣ 一鍵分帳：自動計算每人應收應付\n\n"
+            "📥 請輸入「選單」來開始操作吧！"
+        )
+
+    main_flex = build_main_flex()
+    line_bot_api.reply_message(event.reply_token, [TextSendMessage(text=text), main_flex])
 
 if __name__ == "__main__":
     init_db()
