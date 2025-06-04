@@ -216,7 +216,7 @@ def handle_message(event):
     source_id = get_source_id(event)
     user_id = event.source.user_id
     text = event.message.text.strip()
-
+    flex_main = build_main_flex()
     try:
         if text.startswith("刪除") and text[2:].strip().isdigit():
             record_id = int(text[2:].strip())
@@ -267,7 +267,7 @@ def handle_message(event):
         user_name = profile.display_name
         add_record(source_id, user_id, user_name, category, amount)
         reply = TextSendMessage(text=f"記帳成功：{category} ${amount}（{user_name}）")
-        flex_main = build_main_flex()
+        #
         line_bot_api.reply_message(event.reply_token, flex_main)
 
     except Exception as e:
@@ -279,8 +279,6 @@ def handle_postback(event):
     source_id = get_source_id(event)
     user_id = event.source.user_id
 
-    flex_main = build_main_flex()
-    
     try:
         params = dict(item.split('=') for item in event.postback.data.split('&') if '=' in item)
         action = params.get("action")
