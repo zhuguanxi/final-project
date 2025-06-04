@@ -306,7 +306,7 @@ def handle_postback(event):
                 for uid, data in user_records.items():
                     messages.append(f"👤 {data['name']}")
                     for rec_id, cat, amt in data["records"]:
-                        messages.append(f"[編號: {rec_id}] {cat} - ${amt}")
+                        messages.append(f"[{rec_id}] {cat} - ${amt}")
                     messages.append("")  # 空行分隔
                 reply = TextSendMessage(text="\n".join(messages[:60]))  # 避免超過文字上限
             
