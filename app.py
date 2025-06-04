@@ -217,6 +217,10 @@ def handle_message(event):
     user_id = event.source.user_id
     text = event.message.text.strip()
 
+    if (text=="選單"):
+        flex_main = build_main_flex()
+        line_bot_api.reply_message(event.reply_token, flex_main)
+
     try:
         if text.startswith("刪除") and text[2:].strip().isdigit():
             record_id = int(text[2:].strip())
@@ -353,6 +357,5 @@ def callback():
 if __name__ == "__main__":
     init_db()
     port = int(os.environ.get("PORT", 5000))
-    flex_main = build_main_flex()
     app.run(host="0.0.0.0", port=port)
     
