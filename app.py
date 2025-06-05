@@ -307,8 +307,13 @@ def handle_postback(event):
                 messages = ["📒 所有記帳紀錄：\n"]
                 for uid, data in user_records.items():
                     messages.append(f"👤 {data['name']}")
+
+                    total = 0
                     for rec_id, cat, amt in data["records"]:
                         messages.append(f"[{rec_id}] {cat} - ${amt}")
+                        total += amt
+                    
+                    messages.append(f"總金額：${total}")
                     messages.append("")  # 空行分隔
                 reply = TextSendMessage(text="\n".join(messages[:60]))  # 避免超過文字上限
             
