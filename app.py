@@ -301,6 +301,7 @@ def handle_postback(event):
             flex_main = build_main_flex()
             user_records = get_all_user_records(source_id)
             print(user_records)
+            total = 0
             if not user_records:
                 reply = TextSendMessage(text="沒有記帳紀錄。")
             else:
@@ -308,7 +309,7 @@ def handle_postback(event):
                 for uid, data in user_records.items():
                     messages.append(f"👤 {data['name']}")
 
-                    total = 0
+                    
                     for rec_id, cat, amt in data["records"]:
                         messages.append(f"[{rec_id}] {cat} - ${amt}")
                         total += amt
