@@ -314,8 +314,8 @@ def handle_postback(event):
                         messages.append(f"[{rec_id}] {cat} - ${amt}")
                         total += amt
                     
-                    messages.append(f"總金額：${total}")
                     messages.append("")  # 空行分隔
+                messages.append(f"總金額：${total}")
                 reply = TextSendMessage(text="\n".join(messages[:60]))  # 避免超過文字上限
             
             line_bot_api.reply_message(event.reply_token, [reply, flex_main])
